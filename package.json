@@ -1,0 +1,28 @@
+{
+  "name": "tui-portfolio-website",
+  "version": "2.0.0",
+  "description": "A TUI-styled portfolio website with auto-updating projects",
+  "scripts": {
+    "build": "node build-projects.js",
+    "watch": "node watch-projects.js",
+    "serve": "python3 -m http.server 8000",
+    "test": "bash test-auto-update.sh",
+    "dev": "echo 'Run these in separate terminals:' && echo '  Terminal 1: npm run watch' && echo '  Terminal 2: npm run serve'"
+  },
+  "keywords": [
+    "portfolio",
+    "tui",
+    "terminal",
+    "static-site",
+    "markdown"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lolololololololololololololololo/your-portfolio.git"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
