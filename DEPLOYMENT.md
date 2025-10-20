@@ -119,6 +119,30 @@ The GitHub Actions workflow (`.github/workflows/deploy.yml`) does the following:
 - **Automatic**: Every push to the `main` branch
 - **Manual**: Click "Run workflow" in the Actions tab
 
+### Troubleshooting: permission error when pushing to gh-pages
+
+If you see an error like:
+
+```
+remote: Permission to <owner>/<repo>.git denied to github-actions[bot].
+fatal: unable to access 'https://github.com/<owner>/<repo>.git/': The requested URL returned error: 403
+Error: Action failed with "The process '/usr/bin/git' failed with exit code 128"
+```
+
+This means the workflow tried to push to the `gh-pages` branch but the Actions runner wasn't allowed to write. Fixes:
+
+- Preferred: allow GitHub Actions to write repository contents
+   1. Go to Settings → Actions in your repository
+ 2. Under "Workflow permissions" choose "Read and write permissions"
+ 3. Save changes
+
+- Alternative (if organization policy or restrictions apply): use a Personal Access Token (PAT)
+   1. Create a PAT with the "repo" scope
+   2. Add it to your repo's Secrets as `ACTIONS_DEPLOY_TOKEN`
+   3. Update the workflow's deploy step to use that token instead of `GITHUB_TOKEN`.
+
+After enabling write permissions, re-run the workflow (Actions → select the workflow → Run workflow).
+
 ## 🎯 Testing Locally Before Deployment
 
 Always test your changes locally first:
