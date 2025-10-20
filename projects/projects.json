@@ -1,6 +1,31 @@
 {
   "projects": [
     {
+      "id": "example-with-media",
+      "title": "Example Project with Media",
+      "file": "example-with-media.md",
+      "date": "2024-10-20",
+      "tags": [
+        "demo",
+        "example",
+        "web"
+      ],
+      "github": "https://github.com/example/demo-project",
+      "demo": "https://demo-project.example.com"
+    },
+    {
+      "id": "project",
+      "title": "hello world Project",
+      "file": "project.md",
+      "date": "2024-10-20",
+      "tags": [
+        "test",
+        "demo"
+      ],
+      "github": "https://github.com/test/test",
+      "demo": "https://test.com"
+    },
+    {
       "id": "test-project",
       "title": "Test Project",
       "file": "test-project.md",
