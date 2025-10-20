@@ -1,6 +1,6 @@
 # 🚀 GitHub Pages Deployment Guide
 
-This guide will help you deploy your TUI Portfolio website to GitHub Pages with automatic rebuilds.
+This guide helps you deploy your TUI Portfolio website to GitHub Pages with automatic rebuilds using a GitHub Actions workflow that publishes to the `gh-pages` branch.
 
 ## ✨ What's Set Up
 
@@ -126,8 +126,8 @@ Always test your changes locally first:
 ```bash
 # Build projects.json
 npm run build
-# or
-node build-projects.js
+# Then link it (replace with your actual repository URL):
+git remote add origin https://github.com/lolololololololololololololololo/website-portfolio.git
 
 # Start local server
 npm run serve
@@ -148,7 +148,7 @@ python3 -m http.server 8000
 
 **Common issues:**
 
-1. **Node.js errors in build step:**
+4. Your site will be live at: `https://lolololololololololololololololo.github.io/website-portfolio/` (once the workflow completes)
    - Make sure `build-projects.js` works locally
    - Check for syntax errors in markdown frontmatter
    - Verify all markdown files have valid YAML frontmatter
@@ -210,9 +210,9 @@ Value: 185.199.108.153
 Add three more A records with these IPs:
 - `185.199.109.153`
 - `185.199.110.153`
-- `185.199.111.153`
-
-**Option B: Use CNAME record (subdomain like `www.example.com`)**
+1. Commits the repository contents to the `gh-pages` branch and pushes it
+2. GitHub Pages serves the `gh-pages` branch
+3. The workflow prints the deployment URL in the logs
 ```
 Type: CNAME
 Name: www
