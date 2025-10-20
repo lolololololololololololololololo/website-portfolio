@@ -6,7 +6,10 @@ A modern, elegant portfolio website styled like a Terminal User Interface (TUI),
 
 ## ✨ Features
 
-- **🔄 Auto-Update Projects**: Add markdown files and watch them appear automatically (NEW!)
+- **🔄 Auto-Update Projects**: Add markdown files and watch them appear automatically
+- **🖼️ Image Support**: Display images with clickable preview boxes (NEW!)
+- **📺 Video Integration**: Embed YouTube videos and other video links (NEW!)
+- **📱 Mobile Optimized**: Responsive layout that works perfectly on iOS and mobile devices (NEW!)
 - **🎨 Terminal Aesthetic**: Authentic TUI look with box-drawing characters and monospace fonts
 - **🌓 Time-Based Themes**: Automatic light/dark mode switching based on time of day
   - Light mode: 6:00 AM - 6:00 PM
@@ -15,7 +18,6 @@ A modern, elegant portfolio website styled like a Terminal User Interface (TUI),
 - **💻 Syntax Highlighting**: Beautiful code blocks with Prism.js
 - **🚀 No Build Step**: Pure HTML/CSS/JS - ready to deploy
 - **⌨️ Keyboard Navigation**: Full keyboard support with Alt+Key shortcuts
-- **📱 Responsive**: Works seamlessly on desktop and mobile
 - **♿ Accessible**: Semantic HTML and ARIA labels
 - **⚡ Fast**: Lightweight and performant
 
@@ -72,18 +74,24 @@ tui-portfolio/
 ├── css/
 │   └── styles.css         # All styles with theme variables
 ├── js/
-│   ├── main.js            # Navigation and routing logic
-│   ├── theme-manager.js   # Theme switching functionality
-│   └── markdown-loader.js # Content loading and parsing
+│   ├── tui-app.js         # Main TUI application logic
+│   ├── theme-manager.js   # Theme switching functionality (legacy)
+│   ├── markdown-loader.js # Content loading and parsing (legacy)
+│   └── main.js            # Navigation and routing (legacy)
+├── media/                 # NEW: Media assets directory
+│   ├── images/           # Project images and screenshots
+│   └── videos/           # Video thumbnails (videos hosted on YouTube)
 ├── projects/
-│   ├── projects.json      # Project index (required)
-│   ├── project-template.md # Template for new projects
+│   ├── projects.json      # Project index (auto-generated)
+│   ├── PROJECT_TEMPLATE.md # Template for new projects
 │   ├── example-project-1.md
 │   └── example-project-2.md
 ├── content/
 │   ├── about.md           # About page content
 │   ├── skills.md          # Skills page content
 │   └── contact.md         # Contact page content
+├── CONTRIBUTING.md        # Detailed contribution guide
+├── QUICK_START.md         # Quick reference for getting started
 └── README.md              # This file
 ```
 
@@ -137,87 +145,98 @@ body {
 
 ## 📝 Adding New Projects
 
-### 🚀 NEW: Automatic Project Updates!
+Your portfolio automatically detects and updates when you add new projects!
 
-Your portfolio now automatically detects and updates when you add new projects! See [AUTO_UPDATE_GUIDE.md](AUTO_UPDATE_GUIDE.md) for full details.
+### 🚀 Quick Start
 
-#### Quick Start (Auto Mode - Recommended)
+See [QUICK_START.md](QUICK_START.md) for the fastest way to get started!
 
-1. **Start watch mode** (in Terminal 1):
-   ```bash
-   ./build.sh watch
-   ```
+### Detailed Guide
 
-2. **Start web server** (in Terminal 2):
-   ```bash
-   python3 -m http.server 8000
-   ```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for comprehensive instructions on:
+- Adding projects with images and videos
+- Using markdown features
+- Testing your changes
+- Troubleshooting
 
-3. **Add your project** - Just create a markdown file:
-   ```bash
-   touch projects/my-awesome-project.md
-   ```
+### Quick Reference
 
-4. **Edit the file** with your project content:
-   ```markdown
-   ---
-   title: My Awesome Project
-   date: 2024-10-20
-   tags: [javascript, web, react]
-   github: https://github.com/yourusername/project
-   demo: https://project-demo.com
-   ---
-
-   ## Overview
-   Your project description...
-   ```
-
-5. **Watch it appear!** ✨
-   - Watch mode rebuilds `projects.json` automatically
-   - Browser detects changes within 2 seconds
-   - No manual refresh needed!
-
-#### Manual Mode (Old Way)
-
-If you prefer the manual approach:
-
-**Step 1: Create Project File**
-
-Create `projects/my-awesome-project.md` with frontmatter and content.
-
-**Step 2: Run Build Script**
-
+**Start development**:
 ```bash
-./build.sh
-# or
-node build-projects.js
+./build.sh watch              # Terminal 1: Auto-rebuild
+python3 -m http.server 8000   # Terminal 2: Web server
 ```
 
-**Step 3: Commit and Deploy**
-
+**Add a project**:
 ```bash
-git add .
-git commit -m "Add new project: My Awesome Project"
-git push
+cp PROJECT_TEMPLATE.md projects/my-project.md
+# Edit the file, watch it appear automatically!
 ```
 
-### Project File Requirements
+**Add media**:
+```markdown
+# Images (on their own line)
+![Screenshot](../media/images/screenshot.png)
 
-Each project needs YAML frontmatter:
+# YouTube videos
+[VIDEO: Demo](https://www.youtube.com/watch?v=VIDEO_ID)
+```
+
+### New Media Features
+
+#### 🖼️ Images
+
+Images display in a styled TUI box with a clickable [VIEW] button:
 
 ```markdown
----
-title: Your Project Title       # REQUIRED
-date: 2024-10-20               # REQUIRED (YYYY-MM-DD)
-tags: [tag1, tag2, tag3]       # Optional
-github: https://github.com/... # Optional
-demo: https://demo-url.com     # Optional
----
-
-Your markdown content here...
+![Project Screenshot](../media/images/my-screenshot.png)
 ```
 
-**📖 For detailed instructions, see [AUTO_UPDATE_GUIDE.md](AUTO_UPDATE_GUIDE.md)**
+**Supported formats**: PNG, JPG, GIF, SVG, WebP
+
+**Best practices**:
+- Store images in `/media/images/`
+- Use relative paths: `../media/images/filename.png`
+- Keep file sizes under 1MB
+- Use descriptive filenames
+
+#### 📺 Videos
+
+YouTube videos display with a [▶ PLAY] button:
+
+```markdown
+[VIDEO: Project Demo](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+```
+
+**Features**:
+- Automatic YouTube detection
+- Clickable play button
+- Opens in new tab
+- Shows video URL
+
+**Supported**:
+- YouTube (`youtube.com` or `youtu.be`)
+- Other video links (opens URL directly)
+
+### 📱 Mobile Support
+
+The website now fully supports mobile and iOS devices:
+
+**Responsive Layout**:
+- **Desktop**: Sidebar on right (32 columns)
+- **Tablet**: Narrower sidebar on right (28 columns)  
+- **Mobile**: Compact sidebar at bottom (12 rows)
+
+**Touch Controls**:
+- **Tap**: Navigate menu or click links
+- **Swipe Up/Down**: Scroll content
+- **Pinch**: Handled by browser (zoom)
+
+**iOS Optimizations**:
+- Proper viewport settings for iOS Safari
+- Touch event handling with momentum
+- No zoom on tap (better UX)
+- Full-screen web app mode supported
 
 ## 🚀 Deployment
 
@@ -343,104 +362,76 @@ Test your changes in multiple scenarios:
 
 ## 📋 Markdown Features
 
-The markdown loader supports:
+The TUI app supports extensive markdown formatting. See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
 
-### Frontmatter
-```yaml
----
-title: Your Title
-date: 2024-10-20
-tags: [tag1, tag2]
-github: https://github.com/...
-demo: https://demo.com
----
-```
+### Quick Reference
 
-### Headings
-```markdown
-# H1
-## H2
-### H3
-```
-
-### Emphasis
+**Text Formatting**:
 ```markdown
 **bold** *italic* `code`
 ```
 
-### Lists
-```markdown
-- Item 1
-- Item 2
-  - Nested item
-
-1. Numbered
-2. List
-```
-
-### Links & Images
+**Links & Media**:
 ```markdown
 [Link text](https://example.com)
-![Alt text](image.jpg)
+![Image](../media/images/image.png)
+[VIDEO: Title](https://youtube.com/watch?v=ID)
 ```
 
-### Code Blocks
+**Code Blocks**:
 ````markdown
 ```javascript
 const code = 'highlighted';
 ```
 ````
 
-### Tables
+**Lists & Tables**:
 ```markdown
-| Header 1 | Header 2 |
-|----------|----------|
-| Cell 1   | Cell 2   |
+- Bullet list
+1. Numbered list
+
+| Header | Header |
+|--------|--------|
+| Cell   | Cell   |
 ```
 
-### Blockquotes
-```markdown
-> This is a quote
-```
+### New Features
+
+- **Images**: Display in styled boxes with [VIEW] button
+- **Videos**: YouTube integration with [▶ PLAY] button  
+- **Code Blocks**: [COPY] button to copy code
+- **Links**: Clickable with → indicator
+- **Mobile**: Touch-friendly interaction
 
 ## 🔧 Troubleshooting
 
-### Content Not Loading
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed troubleshooting.
 
-**Problem**: Markdown files aren't loading
+### Quick Fixes
 
-**Solutions**:
+**Content Not Loading**:
+- Run `./build.sh` to rebuild
 - Check browser console for errors
-- Verify file paths in `projects.json` are correct
-- Ensure you're running a local server (not `file://`)
-- Check for CORS issues
+- Verify you're using a local server (not `file://`)
 
-### Theme Not Switching
-
-**Problem**: Theme doesn't change automatically
-
-**Solutions**:
-- Check browser console for JavaScript errors
+**Theme Not Switching**:
 - Clear localStorage: `localStorage.clear()`
-- Verify `theme-manager.js` is loading correctly
+- Hard refresh: Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)
 
-### Syntax Highlighting Not Working
+**Projects Not Appearing**:
+- Verify frontmatter format is correct
+- Run `./build.sh` to regenerate projects.json
+- Check console for fetch errors
 
-**Problem**: Code blocks aren't highlighted
+**Mobile Layout Issues**:
+- Clear browser cache
+- Check viewport meta tag is present
+- Test in different mobile browsers
 
-**Solutions**:
-- Check that Prism.js is loading (CDN might be blocked)
-- Verify language class on code blocks (e.g., `language-javascript`)
-- Check browser console for errors
-
-### Projects Not Appearing
-
-**Problem**: Projects don't show in sidebar
-
-**Solutions**:
-- Verify `projects/projects.json` format is correct (valid JSON)
-- Check file paths in JSON match actual filenames
-- Open browser console to see any fetch errors
+**Images/Videos Not Working**:
+- Verify file paths are correct (relative from project file)
+- Check files exist in `/media/images/` or `/media/videos/`
+- For videos, ensure YouTube URL format is correct
 
 ## 🤝 Contributing
 
@@ -483,20 +474,30 @@ You are free to:
 
 ## 📞 Support
 
+- **Quick Start**: [QUICK_START.md](QUICK_START.md)
+- **Contributing Guide**: [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Auto-Update Guide**: [AUTO_UPDATE_GUIDE.md](AUTO_UPDATE_GUIDE.md)
 - **Issues**: [GitHub Issues](https://github.com/yourusername/tui-portfolio/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/tui-portfolio/discussions)
-- **Email**: your.email@example.com
 
 ## 🗺️ Roadmap
 
-Future enhancements planned:
+Recent additions (October 2024):
+- ✅ Image support with clickable previews
+- ✅ YouTube video integration
+- ✅ Full mobile/iOS optimization
+- ✅ Touch gesture support
+- ✅ Consolidated documentation
 
+Future enhancements planned:
 - [ ] Command palette (Ctrl+K)
 - [ ] Blog section with RSS
 - [ ] Project timeline view
 - [ ] Tag-based filtering
 - [ ] Search across all content
-- [ ] Animated terminal cursor
+- [ ] Gallery view for images
+- [ ] Video playlist support
+- [ ] Dark mode customization
 - [ ] More theme options
 - [ ] i18n support
 

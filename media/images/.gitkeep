@@ -1,0 +1,15 @@
+# Placeholder Image
+
+This is a placeholder. Replace this file with your actual image:
+- example-screenshot.png
+
+**To add your image:**
+1. Copy your image file here
+2. Make sure the filename matches the one in your markdown
+3. Supported formats: PNG, JPG, GIF, SVG, WebP
+4. Recommended: Keep file size under 1MB
+
+**Naming convention:**
+- Use descriptive names: `project-name-screenshot.png`
+- Use lowercase with hyphens
+- Include what the image shows: `homepage`, `dashboard`, `architecture`, etc.

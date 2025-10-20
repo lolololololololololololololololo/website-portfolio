@@ -143,6 +143,11 @@ class TUIApp {
         this.canvas.addEventListener('wheel', (e) => this.handleWheel(e));
         this.canvas.style.cursor = 'default';
         
+        // Touch support for mobile/iOS
+        this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+        
         // Load content
         await this.loadContent();
         
@@ -174,6 +179,10 @@ class TUIApp {
     }
     
     updatePanelLayout() {
+        // Detect mobile/tablet screens
+        const isMobile = window.innerWidth <= 768;
+        const isTablet = window.innerWidth > 768 && window.innerWidth <= 1024;
+        
         // Header panel (full width, top 3 rows)
         this.panels.header.width = this.cols;
         this.panels.header.height = 3;
@@ -183,17 +192,47 @@ class TUIApp {
         this.panels.footer.width = this.cols;
         this.panels.footer.height = 3;
         
-        // Sidebar panel (right side, 32 cols wide)
-        this.panels.sidebar.x = this.cols - 32;
-        this.panels.sidebar.y = 3;
-        this.panels.sidebar.width = 32;
-        this.panels.sidebar.height = this.rows - 6; // Between header (3) and footer (3)
-        
-        // Content panel (left side, remaining space)
-        this.panels.content.x = 0;
-        this.panels.content.y = 3;
-        this.panels.content.width = this.cols - 32;
-        this.panels.content.height = this.rows - 6; // Between header (3) and footer (3)
+        if (isMobile) {
+            // Mobile layout: Stack vertically or hide sidebar initially
+            // Sidebar on bottom, smaller
+            this.panels.sidebar.x = 0;
+            this.panels.sidebar.y = this.rows - 15; // Above footer, smaller height
+            this.panels.sidebar.width = this.cols;
+            this.panels.sidebar.height = 12; // Compact height
+            
+            // Content panel takes top area
+            this.panels.content.x = 0;
+            this.panels.content.y = 3;
+            this.panels.content.width = this.cols;
+            this.panels.content.height = this.rows - 18; // Space for sidebar + footer
+            
+            // Update footer to be higher
+            this.panels.footer.y = this.rows - 3;
+        } else if (isTablet) {
+            // Tablet layout: Narrower sidebar
+            this.panels.sidebar.x = this.cols - 28; // Slightly narrower
+            this.panels.sidebar.y = 3;
+            this.panels.sidebar.width = 28;
+            this.panels.sidebar.height = this.rows - 6;
+            
+            // Content panel
+            this.panels.content.x = 0;
+            this.panels.content.y = 3;
+            this.panels.content.width = this.cols - 28;
+            this.panels.content.height = this.rows - 6;
+        } else {
+            // Desktop layout: Sidebar on right (original)
+            this.panels.sidebar.x = this.cols - 32;
+            this.panels.sidebar.y = 3;
+            this.panels.sidebar.width = 32;
+            this.panels.sidebar.height = this.rows - 6; // Between header (3) and footer (3)
+            
+            // Content panel (left side, remaining space)
+            this.panels.content.x = 0;
+            this.panels.content.y = 3;
+            this.panels.content.width = this.cols - 32;
+            this.panels.content.height = this.rows - 6; // Between header (3) and footer (3)
+        }
     }
     
     async loadContent() {
@@ -474,6 +513,28 @@ class TUIApp {
                 continue;
             }
             
+            // Handle images
+            const imageMatch = line.trim().match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+            if (imageMatch) {
+                const alt = imageMatch[1];
+                const url = imageMatch[2];
+                const renderedImage = this.renderImage(alt, url, maxWidth);
+                lines.push(...renderedImage);
+                i++;
+                continue;
+            }
+            
+            // Handle video links (YouTube or direct)
+            const videoMatch = line.trim().match(/^\[VIDEO:\s*([^\]]+)\]\(([^)]+)\)$/i);
+            if (videoMatch) {
+                const title = videoMatch[1];
+                const url = videoMatch[2];
+                const renderedVideo = this.renderVideo(title, url, maxWidth);
+                lines.push(...renderedVideo);
+                i++;
+                continue;
+            }
+            
             // Handle empty lines
             if (line.trim() === '') {
                 lines.push({ text: '', color: 'fg', type: 'empty' });
@@ -589,6 +650,117 @@ class TUIApp {
         }
         
         lines.push({ text: '└' + '─'.repeat(maxWidth - 2) + '┘', color: 'magenta', type: 'quote-border' });
+        lines.push({ text: '', color: 'fg', type: 'empty' });
+        
+        return lines;
+    }
+    
+    /**
+     * Render an image with TUI styling
+     */
+    renderImage(alt, url, maxWidth) {
+        const lines = [];
+        const title = alt ? ` 🖼  ${alt} ` : ' 🖼  Image ';
+        const viewLink = '[VIEW]';
+        
+        // Create top border with title and view link
+        const titleSection = '─' + title;
+        const remainingWidth = maxWidth - titleSection.length - viewLink.length - 2;
+        const topBorder = '╭' + titleSection + '─'.repeat(Math.max(0, remainingWidth)) + viewLink + '╮';
+        
+        lines.push({ 
+            text: topBorder, 
+            color: 'magenta', 
+            type: 'image-border',
+            hasViewButton: true,
+            imageUrl: url
+        });
+        
+        // Show URL inside box
+        const urlText = url.length > maxWidth - 6 ? url.substring(0, maxWidth - 9) + '...' : url;
+        const urlPadding = ' '.repeat(Math.max(0, maxWidth - urlText.length - 4));
+        lines.push({
+            text: '│ ' + urlText + urlPadding + ' │',
+            color: 'cyan',
+            colorOverrides: { '│': 'magenta' },
+            type: 'image-url',
+            clickable: true,
+            url: url
+        });
+        
+        // Note about TUI limitation
+        const note = '(Click VIEW or URL to open in new tab)';
+        const notePadding = ' '.repeat(Math.max(0, maxWidth - note.length - 4));
+        lines.push({
+            text: '│ ' + note + notePadding + ' │',
+            color: 'dim',
+            colorOverrides: { '│': 'magenta' },
+            type: 'image-note'
+        });
+        
+        lines.push({ text: '╰' + '─'.repeat(maxWidth - 2) + '╯', color: 'magenta', type: 'image-border' });
+        lines.push({ text: '', color: 'fg', type: 'empty' });
+        
+        return lines;
+    }
+    
+    /**
+     * Render a video link with TUI styling
+     */
+    renderVideo(title, url, maxWidth) {
+        const lines = [];
+        const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
+        const icon = isYoutube ? '📺' : '🎬';
+        const headerTitle = ` ${icon} ${title} `;
+        const playButton = isYoutube ? '[▶ PLAY]' : '[OPEN]';
+        
+        // Create top border with title and play button
+        const titleSection = '─' + headerTitle;
+        const remainingWidth = maxWidth - titleSection.length - playButton.length - 2;
+        const topBorder = '╭' + titleSection + '─'.repeat(Math.max(0, remainingWidth)) + playButton + '╮';
+        
+        lines.push({ 
+            text: topBorder, 
+            color: 'red', 
+            type: 'video-border',
+            hasPlayButton: true,
+            videoUrl: url,
+            isYoutube: isYoutube
+        });
+        
+        // Show video URL or YouTube ID
+        let displayUrl = url;
+        if (isYoutube) {
+            // Extract YouTube video ID
+            const videoIdMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+            if (videoIdMatch) {
+                displayUrl = `https://youtube.com/watch?v=${videoIdMatch[1]}`;
+            }
+        }
+        
+        const urlText = displayUrl.length > maxWidth - 6 ? displayUrl.substring(0, maxWidth - 9) + '...' : displayUrl;
+        const urlPadding = ' '.repeat(Math.max(0, maxWidth - urlText.length - 4));
+        lines.push({
+            text: '│ ' + urlText + urlPadding + ' │',
+            color: 'cyan',
+            colorOverrides: { '│': 'red' },
+            type: 'video-url',
+            clickable: true,
+            url: url
+        });
+        
+        // Platform info
+        const platform = isYoutube ? 'YouTube Video' : 'Video Link';
+        const note = `(${platform} - Click PLAY to watch)`;
+        const notePadding = ' '.repeat(Math.max(0, maxWidth - note.length - 4));
+        lines.push({
+            text: '│ ' + note + notePadding + ' │',
+            color: 'dim',
+            colorOverrides: { '│': 'red' },
+            type: 'video-note'
+        });
+        
+        lines.push({ text: '╰' + '─'.repeat(maxWidth - 2) + '╯', color: 'red', type: 'video-border' });
         lines.push({ text: '', color: 'fg', type: 'empty' });
         
         return lines;
@@ -723,6 +895,7 @@ class TUIApp {
     
     /**
      * Process inline formatting (bold, italic, code, links)
+     * Note: Standalone images and videos are handled separately by parseMarkdownToTUI
      */
     processInlineFormatting(text) {
         const segments = [];
@@ -733,8 +906,8 @@ class TUIApp {
             { regex: /\*\*(.+?)\*\*/g, type: 'bold' },
             { regex: /\*(.+?)\*/g, type: 'italic' },
             { regex: /`(.+?)`/g, type: 'code' },
-            { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' },
-            { regex: /!\[([^\]]*)\]\(([^)]+)\)/g, type: 'image' }
+            { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' }
+            // Note: images are NOT processed inline, they get their own box via parseMarkdownToTUI
         ];
         
         // Find all matches
@@ -767,8 +940,6 @@ class TUIApp {
             // Add formatted segment
             if (match.type === 'link') {
                 segments.push({ text: match.text + ' →', type: 'link', url: match.url });
-            } else if (match.type === 'image') {
-                segments.push({ text: `[IMG: ${match.text || 'image'}]`, type: 'image', url: match.url });
             } else {
                 segments.push({ text: match.text, type: match.type });
             }
@@ -1192,7 +1363,7 @@ class TUIApp {
         console.log('Click at row:', row, 'col:', col);
         console.log('Clickable elements:', this.clickableElements.length);
         
-        // Check for clickable elements (links, code blocks)
+        // Check for clickable elements (links, code blocks, images, videos)
         for (const element of this.clickableElements) {
             console.log('Element:', {
                 type: element.type,
@@ -1216,6 +1387,26 @@ class TUIApp {
                     // Copy code to clipboard
                     console.log('Copying code');
                     this.copyToClipboard(element.text);
+                    return;
+                } else if (element.type === 'view-button' && element.url) {
+                    // Open image in new tab
+                    console.log('Opening image:', element.url);
+                    window.open(element.url, '_blank', 'noopener,noreferrer');
+                    return;
+                } else if (element.type === 'play-button' && element.url) {
+                    // Open video in new tab
+                    console.log('Opening video:', element.url);
+                    window.open(element.url, '_blank', 'noopener,noreferrer');
+                    return;
+                } else if (element.type === 'image-url' && element.url) {
+                    // Open image URL
+                    console.log('Opening image URL:', element.url);
+                    window.open(element.url, '_blank', 'noopener,noreferrer');
+                    return;
+                } else if (element.type === 'video-url' && element.url) {
+                    // Open video URL
+                    console.log('Opening video URL:', element.url);
+                    window.open(element.url, '_blank', 'noopener,noreferrer');
                     return;
                 }
             }
@@ -1243,6 +1434,83 @@ class TUIApp {
         } catch (err) {
             console.error('Failed to copy:', err);
         }
+    }
+    
+    handleTouchStart(e) {
+        e.preventDefault();
+        this.touchStartY = e.touches[0].clientY;
+        this.touchStartTime = Date.now();
+        this.touchStartX = e.touches[0].clientX;
+    }
+    
+    handleTouchMove(e) {
+        e.preventDefault();
+        if (!this.touchStartY) return;
+        
+        const touchY = e.touches[0].clientY;
+        const deltaY = this.touchStartY - touchY;
+        
+        // Scroll content based on touch movement
+        if (Math.abs(deltaY) > 5) { // Threshold to prevent accidental scrolling
+            const scrollAmount = deltaY / 20; // Sensitivity adjustment
+            this.scrollContent(scrollAmount);
+            this.touchStartY = touchY; // Update for continuous scrolling
+        }
+    }
+    
+    handleTouchEnd(e) {
+        e.preventDefault();
+        
+        if (!this.touchStartX || !this.touchStartY) return;
+        
+        const touchDuration = Date.now() - this.touchStartTime;
+        const touch = e.changedTouches[0];
+        const deltaX = Math.abs(touch.clientX - this.touchStartX);
+        const deltaY = Math.abs(touch.clientY - this.touchStartY);
+        
+        // If it was a tap (short duration, minimal movement), treat as click
+        if (touchDuration < 300 && deltaX < 10 && deltaY < 10) {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            const col = Math.floor(x / this.charWidth);
+            const row = Math.floor(y / this.charHeight);
+            
+            // Check for clickable elements (use same logic as handleClick)
+            for (const element of this.clickableElements) {
+                const rowMatch = row === element.row;
+                const colMatch = col >= element.startCol && col <= element.endCol;
+                
+                if (rowMatch && colMatch) {
+                    if ((element.type === 'link' || element.type === 'view-button' || 
+                         element.type === 'play-button' || element.type === 'image-url' || 
+                         element.type === 'video-url') && element.url) {
+                        window.open(element.url, '_blank', 'noopener,noreferrer');
+                        return;
+                    } else if (element.type === 'copy-button' && element.text) {
+                        this.copyToClipboard(element.text);
+                        return;
+                    }
+                }
+            }
+            
+            // Check sidebar navigation
+            const sidebar = this.panels.sidebar;
+            if (col >= sidebar.x && col < sidebar.x + sidebar.width &&
+                row >= sidebar.y && row < sidebar.y + sidebar.height) {
+                
+                const itemIndex = this.getMenuItemAtRow(row);
+                if (itemIndex >= 0) {
+                    this.selectedItem = itemIndex;
+                    this.selectItem();
+                }
+            }
+        }
+        
+        // Reset touch tracking
+        this.touchStartY = null;
+        this.touchStartX = null;
+        this.touchStartTime = null;
     }
     
     getMenuItemAtRow(row) {
@@ -1611,6 +1879,13 @@ class TUIApp {
             const colorOverrides = typeof lineObj === 'object' ? lineObj.colorOverrides : null;
             const hasCopyButton = typeof lineObj === 'object' ? lineObj.hasCopyButton : false;
             const codeContent = typeof lineObj === 'object' ? lineObj.codeContent : null;
+            const hasViewButton = typeof lineObj === 'object' ? lineObj.hasViewButton : false;
+            const imageUrl = typeof lineObj === 'object' ? lineObj.imageUrl : null;
+            const hasPlayButton = typeof lineObj === 'object' ? lineObj.hasPlayButton : false;
+            const videoUrl = typeof lineObj === 'object' ? lineObj.videoUrl : null;
+            const clickable = typeof lineObj === 'object' ? lineObj.clickable : false;
+            const url = typeof lineObj === 'object' ? lineObj.url : null;
+            const lineType = typeof lineObj === 'object' ? lineObj.type : null;
             
             if (!line) continue;
             
@@ -1640,6 +1915,51 @@ class TUIApp {
                         startCol: startX + copyButtonStart,
                         endCol: startX + copyButtonStart + 5,
                         text: codeContent
+                    });
+                }
+            }
+            
+            // Track image view button if present
+            if (hasViewButton && imageUrl) {
+                const viewButtonStart = line.indexOf('[VIEW]');
+                if (viewButtonStart !== -1) {
+                    this.clickableElements.push({
+                        type: 'view-button',
+                        row: currentRow,
+                        startCol: startX + viewButtonStart,
+                        endCol: startX + viewButtonStart + 5,
+                        url: imageUrl
+                    });
+                }
+            }
+            
+            // Track video play button if present
+            if (hasPlayButton && videoUrl) {
+                const playButtonStart = line.indexOf('[▶ PLAY]') !== -1 ? line.indexOf('[▶ PLAY]') : line.indexOf('[OPEN]');
+                if (playButtonStart !== -1) {
+                    const buttonLength = line.includes('[▶ PLAY]') ? 7 : 5;
+                    this.clickableElements.push({
+                        type: 'play-button',
+                        row: currentRow,
+                        startCol: startX + playButtonStart,
+                        endCol: startX + playButtonStart + buttonLength,
+                        url: videoUrl
+                    });
+                }
+            }
+            
+            // Track clickable URLs (image URLs, video URLs)
+            if (clickable && url && (lineType === 'image-url' || lineType === 'video-url')) {
+                // Find the actual URL text position in the line (inside the box borders)
+                const urlStart = line.indexOf('│') + 2; // After "│ "
+                const urlEnd = line.lastIndexOf('│') - 1; // Before " │"
+                if (urlStart > 0 && urlEnd > urlStart) {
+                    this.clickableElements.push({
+                        type: lineType,
+                        row: currentRow,
+                        startCol: startX + urlStart,
+                        endCol: startX + urlEnd,
+                        url: url
                     });
                 }
             }
