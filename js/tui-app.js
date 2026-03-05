@@ -23,13 +23,11 @@ class TUIApp {
         this.scrollOffset = 0;
         this.hoveredItem = -1;
         
-        // Smooth momentum scrolling
-        this.scrollMomentum = 0;
-        this.scrollFriction = 0.88; // Friction to slow down (higher = smoother deceleration)
-        this.scrollSensitivity = 0.08; // How much each wheel event adds (lower = more control)
-        this.maxScrollMomentum = 8; // Maximum scroll speed (lower = prevents too fast scrolling)
-        this.momentumThreshold = 0.05; // Stop when momentum is very low
-        this.momentumAnimating = false; // Track if animation is running
+        // HTML content overlay for images/videos
+        this.contentOverlay = null;
+        
+        // Natural scrolling (removed momentum - use native browser scroll)
+        this.useNativeScroll = true;
         
         // Clickable elements tracking
         this.clickableElements = []; // Store positions of links, code blocks
@@ -130,9 +128,25 @@ class TUIApp {
         this.ctx = this.canvas.getContext('2d');
         document.getElementById('terminal').appendChild(this.canvas);
         
+        // Create content overlay for HTML elements (images, videos)
+        this.contentOverlay = document.createElement('div');
+        this.contentOverlay.id = 'content-overlay';
+        this.contentOverlay.style.position = 'absolute';
+        this.contentOverlay.style.pointerEvents = 'auto';
+        this.contentOverlay.style.overflowY = 'auto';
+        this.contentOverlay.style.overflowX = 'hidden';
+        this.contentOverlay.style.scrollBehavior = 'smooth';
+        this.contentOverlay.style.zIndex = '5';
+        document.getElementById('terminal').appendChild(this.contentOverlay);
+        
+        console.log('Content overlay created:', this.contentOverlay);
+        
         // Set up canvas
         this.resize();
         window.addEventListener('resize', () => this.resize());
+        
+        // Position overlay initially
+        this.updateContentOverlayPosition();
         
         // Keyboard input
         window.addEventListener('keydown', (e) => this.handleKey(e));
@@ -191,6 +205,11 @@ class TUIApp {
         this.panels.footer.y = this.rows - 3;
         this.panels.footer.width = this.cols;
         this.panels.footer.height = 3;
+        
+        // Update content overlay position to match content panel
+        if (this.contentOverlay) {
+            this.updateContentOverlayPosition();
+        }
         
         if (isMobile) {
             // Mobile layout: Stack vertically or hide sidebar initially
@@ -1238,67 +1257,32 @@ class TUIApp {
     }
     
     handleWheel(e) {
-        e.preventDefault();
-        
-        const rect = this.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const col = Math.floor(x / this.charWidth);
-        
-        // Check if wheel event is over content panel
-        const content = this.panels.content;
-        if (col >= content.x && col < content.x + content.width) {
-            // Add to momentum based on wheel delta
-            // deltaY can be small (trackpad) or large (mouse wheel)
-            const wheelDelta = e.deltaY * this.scrollSensitivity;
-            
-            // Add wheel input to momentum
-            this.scrollMomentum += wheelDelta;
-            
-            // Cap momentum to max speed
-            this.scrollMomentum = Math.max(
-                -this.maxScrollMomentum,
-                Math.min(this.maxScrollMomentum, this.scrollMomentum)
-            );
-            
-            // Start momentum animation if not already running
-            if (!this.momentumAnimating) {
-                this.animateMomentumScroll();
-            }
-        }
+        // Let the content overlay handle scrolling naturally
+        // No need to prevent default or handle manually
     }
     
-    animateMomentumScroll() {
-        this.momentumAnimating = true;
+    updateContentOverlayPosition() {
+        if (!this.contentOverlay) return;
         
-        const animate = () => {
-            // Apply momentum to scroll
-            if (Math.abs(this.scrollMomentum) > this.momentumThreshold) {
-                const scrollAmount = this.scrollMomentum;
-                this.scrollContent(scrollAmount);
-                
-                // Apply friction
-                this.scrollMomentum *= this.scrollFriction;
-                
-                // Continue animation
-                requestAnimationFrame(animate);
-            } else {
-                // Stop when momentum is negligible
-                this.scrollMomentum = 0;
-                this.momentumAnimating = false;
-            }
-        };
+        const panel = this.panels.content;
+        const pixelX = panel.x * this.charWidth;
+        const pixelY = panel.y * this.charHeight;
+        const pixelWidth = panel.width * this.charWidth;
+        const pixelHeight = panel.height * this.charHeight;
         
-        animate();
+        this.contentOverlay.style.left = pixelX + 'px';
+        this.contentOverlay.style.top = pixelY + 'px';
+        this.contentOverlay.style.width = pixelWidth + 'px';
+        this.contentOverlay.style.height = pixelHeight + 'px';
+        
+        console.log('Overlay positioned:', { pixelX, pixelY, pixelWidth, pixelHeight });
     }
     
     scrollContent(delta) {
-        const maxHeight = this.panels.content.height - 3;
-        const lines = this.getCurrentContentLines();
-        const maxScroll = Math.max(0, lines.length - maxHeight);
-        
-        // Round delta for display but keep momentum fractional
-        const roundedDelta = Math.round(delta);
-        this.scrollOffset = Math.max(0, Math.min(maxScroll, this.scrollOffset + roundedDelta));
+        // Scroll is now handled by the overlay's native scrolling
+        if (this.contentOverlay) {
+            this.contentOverlay.scrollTop += delta;
+        }
     }
     
     getCurrentContentLines() {
@@ -1437,30 +1421,26 @@ class TUIApp {
     }
     
     handleTouchStart(e) {
-        e.preventDefault();
         this.touchStartY = e.touches[0].clientY;
         this.touchStartTime = Date.now();
         this.touchStartX = e.touches[0].clientX;
+        this.isTouchScroll = false;
     }
     
     handleTouchMove(e) {
-        e.preventDefault();
+        // Let the overlay handle scrolling naturally
         if (!this.touchStartY) return;
         
         const touchY = e.touches[0].clientY;
-        const deltaY = this.touchStartY - touchY;
+        const deltaY = Math.abs(this.touchStartY - touchY);
         
-        // Scroll content based on touch movement
-        if (Math.abs(deltaY) > 5) { // Threshold to prevent accidental scrolling
-            const scrollAmount = deltaY / 20; // Sensitivity adjustment
-            this.scrollContent(scrollAmount);
-            this.touchStartY = touchY; // Update for continuous scrolling
+        // If significant movement, it's a scroll not a tap
+        if (deltaY > 10) {
+            this.isTouchScroll = true;
         }
     }
     
     handleTouchEnd(e) {
-        e.preventDefault();
-        
         if (!this.touchStartX || !this.touchStartY) return;
         
         const touchDuration = Date.now() - this.touchStartTime;
@@ -1468,8 +1448,8 @@ class TUIApp {
         const deltaX = Math.abs(touch.clientX - this.touchStartX);
         const deltaY = Math.abs(touch.clientY - this.touchStartY);
         
-        // If it was a tap (short duration, minimal movement), treat as click
-        if (touchDuration < 300 && deltaX < 10 && deltaY < 10) {
+        // If it was a tap (short duration, minimal movement, not a scroll), treat as click
+        if (!this.isTouchScroll && touchDuration < 300 && deltaX < 10 && deltaY < 10) {
             const rect = this.canvas.getBoundingClientRect();
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
@@ -1864,128 +1844,139 @@ class TUIApp {
             lines = this.content[this.currentView] || [{ text: 'No content available', color: 'dim', type: 'empty' }];
         }
         
-        // Draw content lines with proper clipping
-        for (let i = 0; i < Math.min(lines.length - this.scrollOffset, maxHeight); i++) {
-            const lineIndex = i + this.scrollOffset;
-            if (lineIndex >= lines.length) break;
-            
-            const lineObj = lines[lineIndex];
-            if (!lineObj) continue;
-            
-            // Handle both old string format and new object format
+        // Render HTML content in overlay for rich media
+        this.renderHTMLContent(lines);
+    }
+    
+    /**
+     * Render HTML content in overlay (images, videos, formatted text)
+     */
+    renderHTMLContent(lines) {
+        if (!this.contentOverlay) {
+            console.error('No content overlay!');
+            return;
+        }
+        
+        console.log('Rendering HTML content, lines:', lines.length);
+        
+        // Always show something to verify overlay is working
+        if (!lines || lines.length === 0) {
+            this.contentOverlay.innerHTML = '<div style="padding: 20px; color: #ff6b6b;">No content loaded</div>';
+            return;
+        }
+        
+        let html = '<div style="padding: 10px 20px; font-family: \'Courier New\', monospace; font-size: 14px; line-height: 1.6; color: #b3b1ad; background: #0d1117;">';
+        
+        for (const lineObj of lines) {
             const line = typeof lineObj === 'string' ? lineObj : lineObj.text;
-            const lineColor = typeof lineObj === 'object' ? lineObj.color : null;
-            const lineFormatted = typeof lineObj === 'object' ? lineObj.formatted : null;
-            const colorOverrides = typeof lineObj === 'object' ? lineObj.colorOverrides : null;
-            const hasCopyButton = typeof lineObj === 'object' ? lineObj.hasCopyButton : false;
-            const codeContent = typeof lineObj === 'object' ? lineObj.codeContent : null;
-            const hasViewButton = typeof lineObj === 'object' ? lineObj.hasViewButton : false;
-            const imageUrl = typeof lineObj === 'object' ? lineObj.imageUrl : null;
-            const hasPlayButton = typeof lineObj === 'object' ? lineObj.hasPlayButton : false;
-            const videoUrl = typeof lineObj === 'object' ? lineObj.videoUrl : null;
-            const clickable = typeof lineObj === 'object' ? lineObj.clickable : false;
-            const url = typeof lineObj === 'object' ? lineObj.url : null;
             const lineType = typeof lineObj === 'object' ? lineObj.type : null;
+            const imageUrl = typeof lineObj === 'object' ? lineObj.imageUrl : null;
+            const videoUrl = typeof lineObj === 'object' ? lineObj.videoUrl : null;
+            const isYoutube = typeof lineObj === 'object' ? lineObj.isYoutube : false;
+            const formatted = typeof lineObj === 'object' ? lineObj.formatted : null;
+            const codeContent = typeof lineObj === 'object' ? lineObj.codeContent : null;
             
-            if (!line) continue;
-            
-            // Truncate line to fit panel width strictly
-            const displayLine = line.substring(0, maxWidth);
-            
-            // Determine color
-            let color = this.colors.fg;
-            if (lineColor) {
-                // Use specified color
-                color = this.colors[lineColor] || this.colors.fg;
-            } else if (line.startsWith('╔') || line.startsWith('╚') || line.startsWith('┌') || line.startsWith('└')) {
-                color = this.colors.cyan;
-            } else if (line.startsWith('│') || line.startsWith('║')) {
-                color = this.colors.border;
+            // Render images as actual <img> tags
+            if (lineType === 'image-border' && imageUrl) {
+                html += `<div style="margin: 20px 0; text-align: center;">`;
+                html += `<img src="${imageUrl}" style="max-width: 100%; height: auto; border: 2px solid #d2a6ff; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);" alt="Project image" />`;
+                html += `<div style="margin-top: 8px; font-size: 12px; color: #8d93a0;">Click to open in full size</div>`;
+                html += `</div>`;
+                continue;
             }
             
-            const currentRow = startY + i;
-            
-            // Track copy button if present
-            if (hasCopyButton && codeContent) {
-                const copyButtonStart = line.indexOf('[COPY]');
-                if (copyButtonStart !== -1) {
-                    this.clickableElements.push({
-                        type: 'copy-button',
-                        row: currentRow,
-                        startCol: startX + copyButtonStart,
-                        endCol: startX + copyButtonStart + 5,
-                        text: codeContent
-                    });
+            // Render YouTube videos as embedded iframes
+            if (lineType === 'video-border' && videoUrl && isYoutube) {
+                // Extract video ID
+                const videoIdMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+                if (videoIdMatch) {
+                    const videoId = videoIdMatch[1];
+                    html += `<div style="margin: 20px 0;">`;
+                    html += `<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border: 2px solid #f07178; border-radius: 4px;">`;
+                    html += `<iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                    html += `</div>`;
+                    html += `</div>`;
                 }
+                continue;
             }
             
-            // Track image view button if present
-            if (hasViewButton && imageUrl) {
-                const viewButtonStart = line.indexOf('[VIEW]');
-                if (viewButtonStart !== -1) {
-                    this.clickableElements.push({
-                        type: 'view-button',
-                        row: currentRow,
-                        startCol: startX + viewButtonStart,
-                        endCol: startX + viewButtonStart + 5,
-                        url: imageUrl
-                    });
-                }
+            // Skip other image/video metadata lines
+            if (lineType && (lineType.includes('image') || lineType.includes('video'))) {
+                continue;
             }
             
-            // Track video play button if present
-            if (hasPlayButton && videoUrl) {
-                const playButtonStart = line.indexOf('[▶ PLAY]') !== -1 ? line.indexOf('[▶ PLAY]') : line.indexOf('[OPEN]');
-                if (playButtonStart !== -1) {
-                    const buttonLength = line.includes('[▶ PLAY]') ? 7 : 5;
-                    this.clickableElements.push({
-                        type: 'play-button',
-                        row: currentRow,
-                        startCol: startX + playButtonStart,
-                        endCol: startX + playButtonStart + buttonLength,
-                        url: videoUrl
-                    });
-                }
-            }
-            
-            // Track clickable URLs (image URLs, video URLs)
-            if (clickable && url && (lineType === 'image-url' || lineType === 'video-url')) {
-                // Find the actual URL text position in the line (inside the box borders)
-                const urlStart = line.indexOf('│') + 2; // After "│ "
-                const urlEnd = line.lastIndexOf('│') - 1; // Before " │"
-                if (urlStart > 0 && urlEnd > urlStart) {
-                    this.clickableElements.push({
-                        type: lineType,
-                        row: currentRow,
-                        startCol: startX + urlStart,
-                        endCol: startX + urlEnd,
-                        url: url
-                    });
-                }
-            }
-            
-            // Ensure we don't draw beyond panel boundaries
-            if (currentRow < panel.y + panel.height - 1) {
-                // Draw line with inline formatting if available
-                if (lineFormatted && Array.isArray(lineFormatted)) {
-                    this.drawFormattedText(startX, currentRow, lineFormatted, maxWidth, currentRow);
-                } else if (colorOverrides) {
-                    // Draw with color overrides for specific characters
-                    this.drawTextWithOverrides(startX, currentRow, displayLine, color, colorOverrides);
+            // Render headers with styling
+            if (lineType === 'header') {
+                if (line.startsWith('╔')) {
+                    html += `<div style="margin: 24px 0 8px; padding: 12px; border: 2px solid #59c2ff; border-radius: 4px; background: #151b24;">`;
+                } else if (line.startsWith('┌')) {
+                    html += `<h2 style="margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #59c2ff; color: #59c2ff; font-size: 1.4em;">${line.replace(/[┌─┐]/g, '').trim()}</h2>`;
+                    continue;
                 } else {
-                    this.drawText(startX, currentRow, displayLine, color);
+                    html += `<h3 style="margin: 16px 0 10px; color: #ffb454; font-size: 1.2em;">${line.replace(/[▸■]/g, '').trim()}</h3>`;
+                    continue;
                 }
+            }
+            
+            // Render code blocks
+            if (lineType === 'code-border' || lineType === 'code') {
+                if (lineType === 'code-border' && codeContent) {
+                    html += `<pre style="margin: 16px 0; padding: 16px; background: #0f141b; border: 2px solid #7fd962; border-radius: 4px; overflow-x: auto; position: relative;"><code style="color: #b3b1ad; font-family: 'Courier New', monospace;">${this.escapeHtml(codeContent)}</code></pre>`;
+                }
+                continue;
+            }
+            
+            // Render regular content with formatting
+            if (formatted && Array.isArray(formatted)) {
+                html += '<div style="margin: 6px 0;">';
+                for (const segment of formatted) {
+                    let style = '';
+                    let text = this.escapeHtml(segment.text);
+                    
+                    if (segment.type === 'bold') {
+                        html += `<strong style="color: #e6e1cf;">${text}</strong>`;
+                    } else if (segment.type === 'italic') {
+                        html += `<em style="color: #ffb454;">${text}</em>`;
+                    } else if (segment.type === 'code') {
+                        html += `<code style="background: #0f141b; padding: 2px 6px; border-radius: 3px; color: #7fd962;">${text}</code>`;
+                    } else if (segment.type === 'link' && segment.url) {
+                        html += `<a href="${segment.url}" target="_blank" rel="noopener noreferrer" style="color: #59c2ff; text-decoration: none; border-bottom: 1px dotted #59c2ff;">${text}</a>`;
+                    } else {
+                        html += text;
+                    }
+                }
+                html += '</div>';
+            } else if (line && lineType !== 'empty') {
+                // Simple line rendering
+                let color = '#b3b1ad';
+                if (line.startsWith('╔') || line.startsWith('╚') || line.startsWith('┌') || line.startsWith('└')) {
+                    color = '#59c2ff';
+                }
+                html += `<div style="margin: 4px 0; color: ${color};">${this.escapeHtml(line)}</div>`;
+            } else if (lineType === 'empty') {
+                html += '<div style="height: 8px;"></div>';
             }
         }
         
-        // Draw scroll indicator if content is larger than viewport
-        if (lines.length > maxHeight) {
-            const scrollPercent = Math.min(1, this.scrollOffset / (lines.length - maxHeight));
-            const indicatorY = startY + Math.floor(scrollPercent * (maxHeight - 1));
-            if (indicatorY < panel.y + panel.height - 1) {
-                this.drawChar(panel.x + panel.width - 2, indicatorY, '█', this.colors.accent);
-            }
-        }
+        html += '</div>';
+        this.contentOverlay.innerHTML = html;
+        
+        console.log('HTML content set, overlay visible:', this.contentOverlay.style.display !== 'none');
+        
+        // Add click handlers for images
+        const images = this.contentOverlay.querySelectorAll('img');
+        images.forEach(img => {
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', () => {
+                window.open(img.src, '_blank', 'noopener,noreferrer');
+            });
+        });
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     /**

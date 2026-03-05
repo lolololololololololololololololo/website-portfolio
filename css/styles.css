@@ -1,6 +1,6 @@
 /* ============================================
-   TRUE TUI TERMINAL STYLES
-   Fixed grid, no scrolling, uniform characters
+   TUI TERMINAL STYLES WITH HTML OVERLAY
+   Canvas for borders/UI, HTML for rich content
    ============================================ */
 
 * {
@@ -13,18 +13,104 @@ html, body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: #000;
+    background: #0a0e14;
     font-family: 'Courier New', 'Liberation Mono', Courier, monospace;
 }
 
 #terminal {
     width: 100%;
     height: 100%;
-    background: #000;
-    color: #0f0;
+    background: #0a0e14;
+    position: relative;
 }
 
-/* Pure TUI Canvas - no web elements */
+/* Canvas for TUI borders and navigation */
 canvas {
     display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: auto; /* Allow clicks on canvas for navigation */
+    z-index: 1;
+}
+
+/* HTML overlay for rich content (images, videos, formatted text) */
+#content-overlay {
+    position: absolute;
+    background: transparent;
+    color: #b3b1ad;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    z-index: 5; /* Above canvas but allow interaction */
+    pointer-events: auto;
+}
+
+/* Scrollbar styling */
+#content-overlay::-webkit-scrollbar {
+    width: 12px;
+}
+
+#content-overlay::-webkit-scrollbar-track {
+    background: #0f141b;
+    border-left: 1px solid #2d3640;
+}
+
+#content-overlay::-webkit-scrollbar-thumb {
+    background: #4d5566;
+    border-radius: 6px;
+}
+
+#content-overlay::-webkit-scrollbar-thumb:hover {
+    background: #5d6576;
+}
+
+/* Responsive images */
+#content-overlay img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+/* Video containers */
+#content-overlay iframe {
+    max-width: 100%;
+}
+
+/* Links */
+#content-overlay a {
+    color: #59c2ff;
+    text-decoration: none;
+    border-bottom: 1px dotted #59c2ff;
+    transition: color 0.2s;
+}
+
+#content-overlay a:hover {
+    color: #7dd4ff;
+    border-bottom-color: #7dd4ff;
+}
+
+/* Code blocks */
+#content-overlay pre {
+    overflow-x: auto;
+}
+
+#content-overlay code {
+    font-family: 'Courier New', monospace;
+}
+
+/* Smooth scrolling */
+#content-overlay {
+    scroll-behavior: smooth;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    #content-overlay {
+        font-size: 13px;
+    }
+    
+    #content-overlay img {
+        border-width: 1px;
+    }
 }
